@@ -25,35 +25,26 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # 1. Bersihkan folder android & lib lama agar tidak konflik
-    - name: Clean Old Project Structure
-      run: |
-        rm -rf android lib/main.dart
+    - name: Clean Old Files
+      run: rm -rf android lib/main.dart
 
-    # 2. Regenerasi struktur proyek Flutter secara lengkap
     - name: Re-generate Flutter Project
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # 3. Install CMake 3.22.1, NDK 28, dan terima semua lisensi
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # 4. Patch build.gradle & settings.gradle untuk Android SDK 35, NDK 28 & Kotlin 2.1.0
-    - name: Patch Android Gradle Settings
+    - name: Configure Android Gradle for SDK 35 & NDK 28
       run: |
-        # Update compileSdk & targetSdk ke 35, serta set NDK ke 28.0.12433566
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
         sed -i 's/compileSdk .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdk .*/targetSdk = 35/g' android/app/build.gradle
         sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
-        
-        # Patch Gradle Wrapper versi 8.4
         sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
-        # Tulis settings.gradle dengan Kotlin 2.1.0
         cat << 'EOF' > android/settings.gradle
         pluginManagement {
             def flutterSdkPath = {
@@ -85,7 +76,6 @@ jobs:
         include ":app"
         EOF
 
-    # 5. Tulis file pubspec.yaml
     - name: Update pubspec.yaml
       run: |
         cat << 'EOF' > pubspec.yaml
@@ -115,8 +105,7 @@ jobs:
           uses-material-design: true
         EOF
 
-    # 6. Tulis ulang lib/main.dart secara aman
-    - name: Write main.dart
+    - name: Write Valid main.dart
       run: |
         mkdir -p lib
         cat << 'EOF' > lib/main.dart
@@ -280,15 +269,15 @@ jobs:
             });
 
             try {
-              final req = OpenAiRequest(
+              final request = FllamaRequest(
                 modelPath: localModelPath!,
                 messages: [
-                  MessageOpenAi(
-                    role: "system",
+                  FllamaMessage(
+                    role: Role.system,
                     content: "Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai.",
                   ),
-                  MessageOpenAi(
-                    role: "user",
+                  FllamaMessage(
+                    role: Role.user,
                     content: userText,
                   ),
                 ],
@@ -297,7 +286,7 @@ jobs:
 
               String aiResponse = "";
               
-              await fllamaInference(req, (response, done) {
+              await fllama(request, (response, done) {
                 aiResponse += response;
                 setState(() {
                   _messages[_messages.length - 1] = Message(sender: 'ai', text: aiResponse);
@@ -426,15 +415,12 @@ jobs:
         }
         EOF
 
-    # 7. Unduh dependencies Flutter
     - name: Install Dependencies
       run: flutter pub get
 
-    # 8. Build APK Release
     - name: Build Android APK
       run: flutter build apk --release --target-platform android-arm64
 
-    # 9. Upload APK ke Artifacts
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
