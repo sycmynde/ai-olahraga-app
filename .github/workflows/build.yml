@@ -28,11 +28,13 @@ jobs:
     - name: Re-generate Flutter Project Structure
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # Patch otomatis SDK 35 untuk plugin fllama
-    - name: Update Android SDK Version to 35
+    # Patch Android SDK 35 & Versi Kotlin ke 2.1.0
+    - name: Upgrade Kotlin and Android SDK for fllama
       run: |
         sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 35/g' android/app/build.gradle
+        sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "2.1.0"/g' android/build.gradle
+        sed -i 's/org.jetbrains.kotlin.android" version .*/org.jetbrains.kotlin.android" version "2.1.0" apply false/g' android/settings.gradle || true
 
     - name: Install Dependencies
       run: flutter pub get
