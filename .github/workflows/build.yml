@@ -25,12 +25,42 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # 1. Regenerasi struktur proyek android
-    - name: Re-generate Flutter Android Project
+    # 1. Buat ulang folder android bawaan
+    - name: Re-generate Flutter Project
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # 2. Injeksi/Tulis Ulang lib/main.dart setelah flutter create agar tidak tertimpa
-    - name: Inject Valid main.dart
+    # 2. Injeksi file pubspec.yaml yang valid
+    - name: Inject pubspec.yaml
+      run: |
+        cat << 'EOF' > pubspec.yaml
+        name: ai_olahraga_app
+        description: "A new Flutter project for On-Device AI."
+        publish_to: 'none'
+        version: 1.0.0+1
+
+        environment:
+          sdk: '>=3.4.0 <4.0.0'
+
+        dependencies:
+          flutter:
+            sdk: flutter
+          cupertino_icons: ^1.0.8
+          fllama: ^0.0.1
+          dio: ^5.7.0
+          file_picker: ^8.1.4
+          path_provider: ^2.1.5
+
+        dev_dependencies:
+          flutter_test:
+            sdk: flutter
+          flutter_lints: ^4.0.0
+
+        flutter:
+          uses-material-design: true
+        EOF
+
+    # 3. Injeksi main.dart persis sebelum build
+    - name: Inject main.dart
       run: |
         mkdir -p lib
         cat << 'EOF' > lib/main.dart
@@ -340,14 +370,14 @@ jobs:
         }
         EOF
 
-    # 3. Install CMake 3.22.1, NDK 28, dan terima lisensi
-    - name: Install Android CMake, NDK & Accept Licenses
+    # 4. Install CMake 3.22.1 & NDK 28
+    - name: Install Android CMake & NDK
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # 4. Patch Android SDK 35, NDK 28, dan Kotlin 2.1.0 di settings.gradle
-    - name: Patch Android SDK 35, NDK 28 & Kotlin 2.1.0
+    # 5. Patch Android SDK 35, NDK 28 & Kotlin 2.1.0
+    - name: Patch Android Config
       run: |
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
@@ -387,36 +417,7 @@ jobs:
         include ":app"
         EOF
 
-    # 5. Injeksi pubspec.yaml yang menyertakan fllama
-    - name: Update pubspec.yaml
-      run: |
-        cat << 'EOF' > pubspec.yaml
-        name: ai_olahraga_app
-        description: "A new Flutter project for On-Device AI."
-        publish_to: 'none'
-        version: 1.0.0+1
-
-        environment:
-          sdk: '>=3.4.0 <4.0.0'
-
-        dependencies:
-          flutter:
-            sdk: flutter
-          cupertino_icons: ^1.0.8
-          fllama: ^0.0.1
-          dio: ^5.7.0
-          file_picker: ^8.1.4
-          path_provider: ^2.1.5
-
-        dev_dependencies:
-          flutter_test:
-            sdk: flutter
-          flutter_lints: ^4.0.0
-
-        flutter:
-          uses-material-design: true
-        EOF
-
+    # 6. Unduh dependencies & Build APK
     - name: Install Dependencies
       run: flutter pub get
 
