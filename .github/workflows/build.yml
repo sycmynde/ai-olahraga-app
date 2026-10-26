@@ -25,11 +25,11 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # 1. Buat ulang folder android bawaan
+    # 1. Buat struktur folder proyek Flutter Android
     - name: Re-generate Flutter Project
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # 2. Injeksi file pubspec.yaml yang valid
+    # 2. Tulis ulang pubspec.yaml dengan dependensi fllama
     - name: Inject pubspec.yaml
       run: |
         cat << 'EOF' > pubspec.yaml
@@ -59,7 +59,7 @@ jobs:
           uses-material-design: true
         EOF
 
-    # 3. Injeksi main.dart persis sebelum build
+    # 3. Tulis ulang main.dart SETELAH flutter create selesai
     - name: Inject main.dart
       run: |
         mkdir -p lib
@@ -376,7 +376,7 @@ jobs:
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # 5. Patch Android SDK 35, NDK 28 & Kotlin 2.1.0
+    # 5. Patch Android SDK 35, NDK 28, dan Kotlin 2.1.0 di settings.gradle
     - name: Patch Android Config
       run: |
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
@@ -417,13 +417,15 @@ jobs:
         include ":app"
         EOF
 
-    # 6. Unduh dependencies & Build APK
+    # 6. Install dependencies
     - name: Install Dependencies
       run: flutter pub get
 
+    # 7. Build APK Release
     - name: Build Android APK
       run: flutter build apk --release --target-platform android-arm64
 
+    # 8. Upload Release APK
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
