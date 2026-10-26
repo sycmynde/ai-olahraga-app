@@ -28,7 +28,7 @@ jobs:
     - name: Re-generate Flutter Project Structure
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # Install CMake, NDK 28, dan setujui lisensi SDK
+    # Install CMake 3.22.1, NDK 28, dan setujui lisensi SDK
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
@@ -41,8 +41,8 @@ jobs:
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
         sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
         
-        # Injeksi plugin Kotlin 2.1.0 ke settings.gradle
-        echo 'plugins { id "org.jetbrains.kotlin.android" version "2.1.0" apply false }' >> android/settings.gradle
+        # Injeksi Kotlin Version 2.1.0 secara aman ke build.gradle
+        sed -i '1s/^/buildscript { ext.kotlin_version = "2.1.0" }\n/' android/build.gradle
 
     - name: Install Dependencies
       run: flutter pub get
