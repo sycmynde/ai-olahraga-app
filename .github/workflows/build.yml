@@ -34,7 +34,7 @@ jobs:
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # Buat ulang settings.gradle dengan Kotlin 2.1.0 di posisi paling atas
+    # Buat ulang settings.gradle & Upgrade Gradle Wrapper ke 8.4
     - name: Configure Gradle and Kotlin Version for fllama
       run: |
         cat << 'EOF' > android/settings.gradle
@@ -71,6 +71,9 @@ jobs:
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
         sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
+        
+        # Patch Gradle Wrapper versi 8.4
+        sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
     - name: Install Dependencies
       run: flutter pub get
