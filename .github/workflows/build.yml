@@ -25,9 +25,6 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    - name: Re-generate Flutter Project Structure
-      run: flutter create --platforms=android --project-name=ai_olahraga_app .
-
     # Install CMake 3.22.1, NDK 28, dan terima lisensi
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
