@@ -27,7 +27,7 @@ jobs:
 
     # Langkah Baru: Membuat struktur folder Android lengkap
     - name: Re-generate Flutter Project Structure
-      run: flutter create --platforms=android .
+      run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
     - name: Install Dependencies
       run: flutter pub get
