@@ -25,19 +25,35 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # 1. Regenerasi struktur proyek android
-    - name: Re-generate Flutter Android Project
+    # 1. Bersihkan folder android & lib lama agar tidak konflik
+    - name: Clean Old Project Structure
+      run: |
+        rm -rf android lib/main.dart
+
+    # 2. Regenerasi struktur proyek Flutter secara lengkap
+    - name: Re-generate Flutter Project
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # 2. Install CMake 3.22.1, NDK 28, dan terima lisensi
+    # 3. Install CMake 3.22.1, NDK 28, dan terima semua lisensi
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # 3. Konfigurasi Gradle, SDK 35, NDK 28, dan Kotlin 2.1.0
-    - name: Configure Gradle and Android SDK for fllama
+    # 4. Patch build.gradle & settings.gradle untuk Android SDK 35, NDK 28 & Kotlin 2.1.0
+    - name: Patch Android Gradle Settings
       run: |
+        # Update compileSdk & targetSdk ke 35, serta set NDK ke 28.0.12433566
+        sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
+        sed -i 's/compileSdk .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdk .*/targetSdk = 35/g' android/app/build.gradle
+        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
+        
+        # Patch Gradle Wrapper versi 8.4
+        sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+
+        # Tulis settings.gradle dengan Kotlin 2.1.0
         cat << 'EOF' > android/settings.gradle
         pluginManagement {
             def flutterSdkPath = {
@@ -69,13 +85,7 @@ jobs:
         include ":app"
         EOF
 
-        # Force compileSdk & targetSdk ke 35, serta ndkVersion 28
-        sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
-        sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
-        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
-        sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
-
-    # 4. Injeksi file pubspec.yaml yang valid
+    # 5. Tulis file pubspec.yaml
     - name: Update pubspec.yaml
       run: |
         cat << 'EOF' > pubspec.yaml
@@ -105,9 +115,10 @@ jobs:
           uses-material-design: true
         EOF
 
-    # 5. Tulis ulang lib/main.dart secara presisi
-    - name: Rewrite main.dart
+    # 6. Tulis ulang lib/main.dart secara aman
+    - name: Write main.dart
       run: |
+        mkdir -p lib
         cat << 'EOF' > lib/main.dart
         import 'dart:io';
         import 'package:flutter/material.dart';
@@ -415,12 +426,15 @@ jobs:
         }
         EOF
 
+    # 7. Unduh dependencies Flutter
     - name: Install Dependencies
       run: flutter pub get
 
+    # 8. Build APK Release
     - name: Build Android APK
       run: flutter build apk --release --target-platform android-arm64
 
+    # 9. Upload APK ke Artifacts
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
