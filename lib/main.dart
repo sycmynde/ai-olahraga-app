@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,13 +42,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Message> _messages = [];
   
-  String selectedModel = 'Qwen2.5 0.5B (390MB)';
+  String selectedModel = 'Qwen2.5 0.5B';
+  String? localModelPath;
   bool isDownloading = false;
   double downloadProgress = 0.0;
   bool isModelReady = false;
 
   final Map<String, String> modelUrls = {
-    'Qwen2.5 0.5B (390MB)': 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    'Qwen2.5 0.5B': 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf',
   };
 
   @override
@@ -60,9 +62,40 @@ class _ChatScreenState extends State<ChatScreen> {
     final dir = await getApplicationDocumentsDirectory();
     final filePath = '${dir.path}/model.gguf';
     final file = File(filePath);
-    setState(() {
-      isModelReady = file.existsSync();
-    });
+    if (file.existsSync()) {
+      setState(() {
+        isModelReady = true;
+        localModelPath = filePath;
+      });
+    }
+  }
+
+  // Fungsi Pilih File dari Penyimpanan Lokal HP
+  Future<void> _pickLocalModel() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+    );
+
+    if (result != null && result.files.single.path != null) {
+      String path = result.files.single.path!;
+      if (path.endsWith('.gguf')) {
+        setState(() {
+          localModelPath = path;
+          isModelReady = true;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Model Lokal Terpilih: ${result.files.single.name}')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pilih file berformat .gguf!')),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _downloadModel() async {
@@ -88,6 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         isDownloading = false;
         isModelReady = true;
+        localModelPath = filePath;
       });
       
       if (mounted) {
@@ -116,12 +150,11 @@ class _ChatScreenState extends State<ChatScreen> {
       _controller.clear();
     });
 
-    // Respon sementara sebelum disambungkan dengan engine inference C++
     Future.delayed(const Duration(milliseconds: 600), () {
       setState(() {
         _messages.add(Message(
           sender: 'ai',
-          text: 'Halo bro! Aku temen olahragamu. Kamu nanya: "$userText". Tetap semangat workout hari ini! 🔥',
+          text: 'Halo bro! Aku temen olahragamu. Kamu nanya: "$userText". Tetap semangat workout! 🔥',
         ));
       });
     });
@@ -136,7 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Card Status & Downloader Model
+          // Card Status, Downloader & Pick File
           Card(
             margin: const EdgeInsets.all(8.0),
             child: Padding(
@@ -146,13 +179,35 @@ class _ChatScreenState extends State<ChatScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(selectedModel, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      isModelReady
-                          ? const Chip(label: Text('Siap Dipakai'), backgroundColor: Colors.greenAccent)
-                          : ElevatedButton(
-                              onPressed: isDownloading ? null : _downloadModel,
-                              child: const Text('Download Model'),
-                            ),
+                      Expanded(
+                        child: Text(
+                          isModelReady ? 'Model: ${localModelPath?.split('/').last}' : selectedModel,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isModelReady)
+                        const Chip(label: Text('Siap'), backgroundColor: Colors.greenAccent)
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickLocalModel,
+                          icon: const Icon(Icons.folder_open),
+                          label: const Text('Pilih File HP'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: isDownloading ? null : _downloadModel,
+                          icon: const Icon(Icons.download),
+                          label: const Text('Download'),
+                        ),
+                      ),
                     ],
                   ),
                   if (isDownloading) ...[
@@ -166,7 +221,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Area Tampilan Chat
+          // Area Chat
           Expanded(
             child: _messages.isEmpty
                 ? const Center(child: Text('Belum ada percakapan. Mulai sapa teman workout-mu!'))
