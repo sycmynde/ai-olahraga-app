@@ -28,21 +28,49 @@ jobs:
     - name: Re-generate Flutter Project Structure
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # Install CMake 3.22.1, NDK 28, dan setujui lisensi SDK
+    # Install CMake 3.22.1, NDK 28, dan terima lisensi
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # Patch file Gradle Android agar sesuai dengan Kotlin 2.1.0 & SDK 35
-    - name: Patch Gradle & Kotlin Settings for fllama
+    # Buat ulang settings.gradle dengan Kotlin 2.1.0 di posisi paling atas
+    - name: Configure Gradle and Kotlin Version for fllama
       run: |
+        cat << 'EOF' > android/settings.gradle
+        pluginManagement {
+            def flutterSdkPath = {
+                def properties = new Properties()
+                def propertiesFile = new File(settingsDir, 'local.properties')
+                if (propertiesFile.exists()) {
+                    propertiesFile.withReader('UTF-8') { reader -> properties.load(reader) }
+                }
+                def flutterSdkPath = properties.getProperty('flutter.sdk')
+                assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+                return flutterSdkPath
+            }()
+
+            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+
+        plugins {
+            id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+            id "com.android.application" version "8.3.2" apply false
+            id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+        }
+
+        include ":app"
+        EOF
+
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
         sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
-        
-        # Injeksi Kotlin Version 2.1.0 secara aman ke build.gradle
-        sed -i '1s/^/buildscript { ext.kotlin_version = "2.1.0" }\n/' android/build.gradle
 
     - name: Install Dependencies
       run: flutter pub get
