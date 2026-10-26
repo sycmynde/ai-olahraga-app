@@ -27,7 +27,7 @@ jobs:
 
     - name: Repair Android Project & V2 Embedding
       run: |
-        flutter create --platforms=android .
+        flutter create --platforms=android --project-name ai_olahraga_app .
         git checkout lib/main.dart || true
 
     - name: Install Android CMake, NDK & Accept Licenses
