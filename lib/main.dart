@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart0:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
@@ -176,7 +176,7 @@ class _ChatScreenState extends State<ChatScreen> {
       String aiResponse = "";
       
       await fllamaInference(req, (response, done) {
-        aiResponse += response;
+        aiResponse += response.toString();
         setState(() {
           _messages[_messages.length - 1] = Message(sender: 'ai', text: aiResponse);
         });
