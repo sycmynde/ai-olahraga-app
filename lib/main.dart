@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:fllama/fllama.dart';
 
 void main() {
   runApp(const MyApp());
@@ -70,7 +71,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // Fungsi Pilih File dari Penyimpanan Lokal HP
   Future<void> _pickLocalModel() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.any,
@@ -85,7 +85,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Model Lokal Terpilih: ${result.files.single.name}')),
+            SnackBar(content: Text('Model Terpilih: ${result.files.single.name}')),
           );
         }
       } else {
@@ -141,16 +141,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _sendMessage() {
-    if (_controller.text.trim().isEmpty) return;
-
-    final userText = _controller.text;
-    setState(() {
-      _messages.add(Message(sender: 'user', text: userText));
-      _controller.clear();
-    });
-
-      void _sendMessage() async {
+  void _sendMessage() async {
     if (_controller.text.trim().isEmpty) return;
     if (localModelPath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,32 +154,28 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _messages.add(Message(sender: 'user', text: userText));
       _controller.clear();
-      // Tambah bubble kosong untuk efek streaming/loading AI
       _messages.add(Message(sender: 'ai', text: 'Sedang berpikir... 🧠'));
     });
 
     try {
-      // Prompt khusus peran Temen Olahraga
-      String prompt = """<|im_start|>system
-Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawablah pesan dengan singkat dan santai.<|im_end|>
-<|im_start|>user
-$userText<|im_end|>
-<|im_start|>assistant
-""";
-
-      final openAiRequest = OpenAiRequest(
+      final req = OpenAiRequest(
         modelPath: localModelPath!,
         messages: [
-          MessageOpenAi(role: "system", content: "Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai."),
-          MessageOpenAi(role: "user", content: userText)
+          MessageOpenAi(
+            role: "system",
+            content: "Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai.",
+          ),
+          MessageOpenAi(
+            role: "user",
+            content: userText,
+          ),
         ],
         contextSize: 2048,
       );
 
       String aiResponse = "";
       
-      // Memanggil Engine LLM C++ Lokal
-      await fllamaInference(openAiRequest, (response, done) {
+      await fllamaInference(req, (response, done) {
         aiResponse += response;
         setState(() {
           _messages[_messages.length - 1] = Message(sender: 'ai', text: aiResponse);
@@ -196,7 +183,10 @@ $userText<|im_end|>
       });
     } catch (e) {
       setState(() {
-        _messages[_messages.length - 1] = Message(sender: 'ai', text: 'Gagal memproses AI: $e');
+        _messages[_messages.length - 1] = Message(
+          sender: 'ai',
+          text: 'Gagal memproses AI: $e',
+        );
       });
     }
   }
@@ -210,7 +200,6 @@ $userText<|im_end|>
       ),
       body: Column(
         children: [
-          // Card Status, Downloader & Pick File
           Card(
             margin: const EdgeInsets.all(8.0),
             child: Padding(
@@ -262,7 +251,6 @@ $userText<|im_end|>
             ),
           ),
 
-          // Area Chat
           Expanded(
             child: _messages.isEmpty
                 ? const Center(child: Text('Belum ada percakapan. Mulai sapa teman workout-mu!'))
@@ -288,7 +276,6 @@ $userText<|im_end|>
                   ),
           ),
 
-          // Input Pesan
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
