@@ -105,7 +105,7 @@ jobs:
           uses-material-design: true
         EOF
 
-    - name: Write Bulletproof main.dart
+    - name: Write Valid main.dart
       run: |
         mkdir -p lib
         cat << 'EOF' > lib/main.dart
@@ -114,7 +114,7 @@ jobs:
         import 'package:path_provider/path_provider.dart';
         import 'package:dio/dio.dart';
         import 'package:file_picker/file_picker.dart';
-        import 'package:fllama/fllama.dart' as fllama_lib;
+        import 'package:fllama/fllama.dart';
 
         void main() {
           runApp(const MyApp());
@@ -269,37 +269,24 @@ jobs:
             });
 
             try {
-              dynamic requestData;
-              try {
-                requestData = (fllama_lib as dynamic).OpenAiRequest(
-                  modelPath: localModelPath!,
-                  messages: [
-                    (fllama_lib as dynamic).MessageOpenAi(
-                      role: "system",
-                      content: "Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai.",
-                    ),
-                    (fllama_lib as dynamic).MessageOpenAi(
-                      role: "user",
-                      content: userText,
-                    ),
-                  ],
-                  contextSize: 2048,
-                );
-              } catch (_) {
-                requestData = {
-                  'modelPath': localModelPath!,
-                  'messages': [
-                    {'role': 'system', 'content': 'Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai.'},
-                    {'role': 'user', 'content': userText}
-                  ],
-                  'contextSize': 2048
-                };
-              }
+              final req = OpenAiRequest(
+                modelPath: localModelPath!,
+                messages: [
+                  MessageOpenAi(
+                    role: "system",
+                    content: "Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai.",
+                  ),
+                  MessageOpenAi(
+                    role: "user",
+                    content: userText,
+                  ),
+                ],
+                contextSize: 2048,
+              );
 
               String aiResponse = "";
-              dynamic inferenceFn = (fllama_lib as dynamic).fllamaInference ?? (fllama_lib as dynamic).fllama;
               
-              await inferenceFn(requestData, (response, done) {
+              await fllamaInference(req, (response, done) {
                 aiResponse += response.toString();
                 setState(() {
                   _messages[_messages.length - 1] = Message(sender: 'ai', text: aiResponse);
