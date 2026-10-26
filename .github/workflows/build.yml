@@ -28,7 +28,13 @@ jobs:
     - name: Re-generate Flutter Project Structure
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # Patch Android SDK 35 & Versi Kotlin ke 2.1.0
+    # Accept semua lisensi SDK & NDK Android
+    - name: Accept Android SDK & NDK Licenses
+      run: |
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
+
+    # Patch Android SDK 35 & Kotlin 2.1.0 untuk fllama
     - name: Upgrade Kotlin and Android SDK for fllama
       run: |
         sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle
