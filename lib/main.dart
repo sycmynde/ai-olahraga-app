@@ -150,14 +150,55 @@ class _ChatScreenState extends State<ChatScreen> {
       _controller.clear();
     });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      setState(() {
-        _messages.add(Message(
-          sender: 'ai',
-          text: 'Halo bro! Aku temen olahragamu. Kamu nanya: "$userText". Tetap semangat workout! 🔥',
-        ));
-      });
+      void _sendMessage() async {
+    if (_controller.text.trim().isEmpty) return;
+    if (localModelPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih file model .gguf dulu bro!')),
+      );
+      return;
+    }
+
+    final userText = _controller.text;
+    setState(() {
+      _messages.add(Message(sender: 'user', text: userText));
+      _controller.clear();
+      // Tambah bubble kosong untuk efek streaming/loading AI
+      _messages.add(Message(sender: 'ai', text: 'Sedang berpikir... 🧠'));
     });
+
+    try {
+      // Prompt khusus peran Temen Olahraga
+      String prompt = """<|im_start|>system
+Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawablah pesan dengan singkat dan santai.<|im_end|>
+<|im_start|>user
+$userText<|im_end|>
+<|im_start|>assistant
+""";
+
+      final openAiRequest = OpenAiRequest(
+        modelPath: localModelPath!,
+        messages: [
+          MessageOpenAi(role: "system", content: "Kamu adalah teman olahraga yang asik, ramah, dan memotivasi. Jawab singkat dan santai."),
+          MessageOpenAi(role: "user", content: userText)
+        ],
+        contextSize: 2048,
+      );
+
+      String aiResponse = "";
+      
+      // Memanggil Engine LLM C++ Lokal
+      await fllamaInference(openAiRequest, (response, done) {
+        aiResponse += response;
+        setState(() {
+          _messages[_messages.length - 1] = Message(sender: 'ai', text: aiResponse);
+        });
+      });
+    } catch (e) {
+      setState(() {
+        _messages[_messages.length - 1] = Message(sender: 'ai', text: 'Gagal memproses AI: $e');
+      });
+    }
   }
 
   @override
