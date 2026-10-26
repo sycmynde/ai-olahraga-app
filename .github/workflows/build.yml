@@ -25,6 +25,13 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
+    # Generate folder android secara otomatis
+    - name: Re-generate Flutter Android Project
+      run: |
+        flutter create --platforms=android --project-name=ai_olahraga_app .
+        # Kembalikan file main.dart asli dari git jika terpengaruh flutter create
+        git checkout lib/main.dart || true
+
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
