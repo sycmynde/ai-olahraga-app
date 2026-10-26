@@ -25,9 +25,14 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # Langkah Baru: Membuat struktur folder Android lengkap
     - name: Re-generate Flutter Project Structure
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
+
+    # Patch otomatis SDK 35 untuk plugin fllama
+    - name: Update Android SDK Version to 35
+      run: |
+        sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 35/g' android/app/build.gradle
 
     - name: Install Dependencies
       run: flutter pub get
