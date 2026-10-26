@@ -25,10 +25,55 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
+    - name: Repair Android Project & V2 Embedding
+      run: |
+        flutter create --platforms=android .
+        git checkout lib/main.dart || true
+
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+    - name: Patch Android SDK 35, NDK 28 & Kotlin 2.1.0
+      run: |
+        sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
+        sed -i 's/compileSdk .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdk .*/targetSdk = 35/g' android/app/build.gradle
+        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
+        sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+
+        cat << 'EOF' > android/settings.gradle
+        pluginManagement {
+            def flutterSdkPath = {
+                def properties = new Properties()
+                def propertiesFile = new File(settingsDir, 'local.properties')
+                if (propertiesFile.exists()) {
+                    propertiesFile.withReader('UTF-8') { reader -> properties.load(reader) }
+                }
+                def flutterSdkPath = properties.getProperty('flutter.sdk')
+                assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+                return flutterSdkPath
+            }()
+
+            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+
+        plugins {
+            id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+            id "com.android.application" version "8.3.2" apply false
+            id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+        }
+
+        include ":app"
+        EOF
 
     - name: Install Dependencies
       run: flutter pub get
