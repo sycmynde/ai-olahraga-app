@@ -25,13 +25,19 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
+    # Buat folder android jika belum ada agar skrip tidak error
+    - name: Ensure Android Directory Exists
+      run: |
+        mkdir -p android/app
+        mkdir -p android/gradle/wrapper
+
     # Install CMake 3.22.1, NDK 28, dan terima lisensi
     - name: Install Android CMake, NDK & Accept Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # Buat ulang settings.gradle & Upgrade Gradle Wrapper ke 8.4
+    # Buat ulang settings.gradle & Update versi Kotlin + Gradle
     - name: Configure Gradle and Kotlin Version for fllama
       run: |
         cat << 'EOF' > android/settings.gradle
@@ -65,11 +71,16 @@ jobs:
         include ":app"
         EOF
 
+    # Regenerasi struktur android tanpa menimpa lib/main.dart
+    - name: Re-generate Flutter Android Files
+      run: flutter create --platforms=android --project-name=ai_olahraga_app .
+
+    # Patch Android SDK 35, NDK 28, dan Gradle Wrapper 8.4
+    - name: Apply Final Android Patches
+      run: |
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
         sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
-        
-        # Patch Gradle Wrapper versi 8.4
         sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
     - name: Install Dependencies
