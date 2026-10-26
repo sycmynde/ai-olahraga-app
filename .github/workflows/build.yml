@@ -25,12 +25,88 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # Generate struktur proyek android otomatis
+    # 1. Regenerasi struktur proyek android
     - name: Re-generate Flutter Android Project
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # Tulis ulang lib/main.dart secara aman setelah flutter create
-    - name: Restore Custom main.dart
+    # 2. Install CMake 3.22.1, NDK 28, dan terima lisensi
+    - name: Install Android CMake, NDK & Accept Licenses
+      run: |
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+    # 3. Konfigurasi Gradle, SDK 35, NDK 28, dan Kotlin 2.1.0
+    - name: Configure Gradle and Android SDK for fllama
+      run: |
+        cat << 'EOF' > android/settings.gradle
+        pluginManagement {
+            def flutterSdkPath = {
+                def properties = new Properties()
+                def propertiesFile = new File(settingsDir, 'local.properties')
+                if (propertiesFile.exists()) {
+                    propertiesFile.withReader('UTF-8') { reader -> properties.load(reader) }
+                }
+                def flutterSdkPath = properties.getProperty('flutter.sdk')
+                assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+                return flutterSdkPath
+            }()
+
+            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+
+        plugins {
+            id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+            id "com.android.application" version "8.3.2" apply false
+            id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+        }
+
+        include ":app"
+        EOF
+
+        # Force compileSdk & targetSdk ke 35, serta ndkVersion 28
+        sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
+        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
+        sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+
+    # 4. Injeksi file pubspec.yaml yang valid
+    - name: Update pubspec.yaml
+      run: |
+        cat << 'EOF' > pubspec.yaml
+        name: ai_olahraga_app
+        description: "A new Flutter project for On-Device AI."
+        publish_to: 'none'
+        version: 1.0.0+1
+
+        environment:
+          sdk: '>=3.4.0 <4.0.0'
+
+        dependencies:
+          flutter:
+            sdk: flutter
+          cupertino_icons: ^1.0.8
+          fllama: ^0.0.1
+          dio: ^5.7.0
+          file_picker: ^8.1.4
+          path_provider: ^2.1.5
+
+        dev_dependencies:
+          flutter_test:
+            sdk: flutter
+          flutter_lints: ^4.0.0
+
+        flutter:
+          uses-material-design: true
+        EOF
+
+    # 5. Tulis ulang lib/main.dart secara presisi
+    - name: Rewrite main.dart
       run: |
         cat << 'EOF' > lib/main.dart
         import 'dart:io';
@@ -338,51 +414,6 @@ jobs:
           }
         }
         EOF
-
-    # Install CMake 3.22.1, NDK 28, dan terima lisensi
-    - name: Install Android CMake, NDK & Accept Licenses
-      run: |
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-    # Konfigurasi Gradle & Kotlin 2.1.0 untuk fllama
-    - name: Configure Gradle and Kotlin Version for fllama
-      run: |
-        cat << 'EOF' > android/settings.gradle
-        pluginManagement {
-            def flutterSdkPath = {
-                def properties = new Properties()
-                def propertiesFile = new File(settingsDir, 'local.properties')
-                if (propertiesFile.exists()) {
-                    propertiesFile.withReader('UTF-8') { reader -> properties.load(reader) }
-                }
-                def flutterSdkPath = properties.getProperty('flutter.sdk')
-                assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-                return flutterSdkPath
-            }()
-
-            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-
-        plugins {
-            id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-            id "com.android.application" version "8.3.2" apply false
-            id "org.jetbrains.kotlin.android" version "2.1.0" apply false
-        }
-
-        include ":app"
-        EOF
-
-        sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
-        sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
-        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
-        sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
     - name: Install Dependencies
       run: flutter pub get
