@@ -28,19 +28,18 @@ jobs:
     - name: Re-generate Flutter Project Structure
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # Accept semua lisensi SDK & NDK Android
-    - name: Accept Android SDK & NDK Licenses
+    # Install CMake & NDK serta setuju lisensi
+    - name: Install Android CMake, NDK & Accept Licenses
       run: |
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-        yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
 
-    # Patch Android SDK 35 & Kotlin 2.1.0 untuk fllama
-    - name: Upgrade Kotlin and Android SDK for fllama
+    # Patch build.gradle agar menggunakan compileSdk 35 & NDK versi 28
+    - name: Configure Android Gradle Settings
       run: |
-        sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle
-        sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 35/g' android/app/build.gradle
-        sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "2.1.0"/g' android/build.gradle
-        sed -i 's/org.jetbrains.kotlin.android" version .*/org.jetbrains.kotlin.android" version "2.1.0" apply false/g' android/settings.gradle || true
+        sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
+        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
 
     - name: Install Dependencies
       run: flutter pub get
