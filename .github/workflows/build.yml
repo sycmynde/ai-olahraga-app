@@ -25,16 +25,46 @@ jobs:
         flutter-version: '3.24.x'
         channel: 'stable'
 
-    # 1. Purge folder android lama untuk cegah error v1 embedding
+    # 1. Bersihkan proyek Android lama
     - name: Purge Old Android Directory
       run: rm -rf android
 
-    # 2. Re-generate struktur Android v2 embedding resmi
+    # 2. Regenerasi proyek Android bersih
     - name: Re-generate Flutter Android Project
       run: flutter create --platforms=android --project-name=ai_olahraga_app .
 
-    # 3. Injeksi/Tulis ulang main.dart agar tidak tertimpa template bawaan
-    - name: Inject Valid main.dart
+    # 3. Injeksi pubspec.yaml
+    - name: Inject pubspec.yaml
+      run: |
+        cat << 'EOF' > pubspec.yaml
+        name: ai_olahraga_app
+        description: "A new Flutter project for On-Device AI."
+        publish_to: 'none'
+        version: 1.0.0+1
+
+        environment:
+          sdk: '>=3.4.0 <4.0.0'
+
+        dependencies:
+          flutter:
+            sdk: flutter
+          cupertino_icons: ^1.0.8
+          fllama: ^0.0.1
+          dio: ^5.7.0
+          file_picker: ^8.1.4
+          path_provider: ^2.1.5
+
+        dev_dependencies:
+          flutter_test:
+            sdk: flutter
+          flutter_lints: ^4.0.0
+
+        flutter:
+          uses-material-design: true
+        EOF
+
+    # 4. Injeksi main.dart yang bersih
+    - name: Inject main.dart
       run: |
         mkdir -p lib
         cat << 'EOF' > lib/main.dart
@@ -344,50 +374,20 @@ jobs:
         }
         EOF
 
-    # 4. Injeksi pubspec.yaml yang valid
-    - name: Inject Valid pubspec.yaml
-      run: |
-        cat << 'EOF' > pubspec.yaml
-        name: ai_olahraga_app
-        description: "A new Flutter project for On-Device AI."
-        publish_to: 'none'
-        version: 1.0.0+1
-
-        environment:
-          sdk: '>=3.4.0 <4.0.0'
-
-        dependencies:
-          flutter:
-            sdk: flutter
-          cupertino_icons: ^1.0.8
-          fllama: ^0.0.1
-          dio: ^5.7.0
-          file_picker: ^8.1.4
-          path_provider: ^2.1.5
-
-        dev_dependencies:
-          flutter_test:
-            sdk: flutter
-          flutter_lints: ^4.0.0
-
-        flutter:
-          uses-material-design: true
-        EOF
-
-    # 5. Install CMake 3.22.1 & NDK 28
+    # 5. Install CMake & NDK 28
     - name: Install Android CMake & NDK
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" "ndk;28.0.12433566" || true
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-    # 6. Patch Android SDK 35, NDK 28, Gradle 8.4 & Kotlin 2.1.0
-    - name: Patch Android Config
+    # 6. Patch paksa NDK 28 & SDK 35 ke android/app/build.gradle
+    - name: Patch Android App build.gradle
       run: |
+        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
+        sed -i 's/compileSdk = .*/compileSdk = 35/g' android/app/build.gradle
+        sed -i 's/targetSdk = .*/targetSdk = 35/g' android/app/build.gradle
         sed -i 's/compileSdkVersion .*/compileSdk = 35/g' android/app/build.gradle
         sed -i 's/targetSdkVersion .*/targetSdk = 35/g' android/app/build.gradle
-        sed -i 's/compileSdk .*/compileSdk = 35/g' android/app/build.gradle
-        sed -i 's/targetSdk .*/targetSdk = 35/g' android/app/build.gradle
-        sed -i '/android {/a \    ndkVersion = "28.0.12433566"' android/app/build.gradle
         sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
         cat << 'EOF' > android/settings.gradle
@@ -421,15 +421,15 @@ jobs:
         include ":app"
         EOF
 
-    # 7. Unduh dependensi
+    # 7. Install dependensi
     - name: Install Dependencies
       run: flutter pub get
 
-    # 8. Kompilasi APK Release
+    # 8. Build APK Release
     - name: Build Android APK
       run: flutter build apk --release --target-platform android-arm64
 
-    # 9. Unggah Artefak APK
+    # 9. Unggah Artefak
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
