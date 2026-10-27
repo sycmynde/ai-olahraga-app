@@ -33,7 +33,12 @@ jobs:
     - name: Re-generate Android Plugin Support
       run: |
         flutter create --platforms=android --project-name=ai_olahraga_app .
-        git checkout lib/main.dart android/app/build.gradle || true
+        git checkout lib/main.dart android/app/build.gradle android/gradle/wrapper/gradle-wrapper.properties || true
+
+    - name: Ensure Gradle 8.4 Wrapper
+      run: |
+        sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+        sed -i 's/gradle-.*-all.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
     - name: Install Dependencies
       run: flutter pub get
